@@ -1,0 +1,17 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Trained models
+*.zip
+*.pth
+*.pt
+
+# Environment variables
+.env
+
+# VS Code local settings
+.vscode/
