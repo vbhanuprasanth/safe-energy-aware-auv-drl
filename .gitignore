@@ -15,3 +15,15 @@ __pycache__/
 
 # VS Code local settings
 .vscode/
+
+# Unity
+simulation/UnitySimulation/[Ll]ibrary/
+simulation/UnitySimulation/[Tt]emp/
+simulation/UnitySimulation/[Oo]bj/
+simulation/UnitySimulation/[Bb]uild/
+simulation/UnitySimulation/[Bb]uilds/
+simulation/UnitySimulation/[Ll]ogs/
+simulation/UnitySimulation/[Uu]ser[Ss]ettings/
+
+# Visual Studio
+simulation/UnitySimulation/.vs/
