@@ -15,8 +15,21 @@ public class AUVCollisionDetector : MonoBehaviour
 
             AUVAgent agent = GetComponent<AUVAgent>();
 
-            if(agent != null) { 
+            if (agent != null)
+            {
                 agent.AddReward(-250f);
+                agent.EndEpisode();
+            }
+        }
+        else if (collision.gameObject.name == "SimulationFloor")
+        {
+            Debug.Log("AUV HIT FLOOR - EPISODE ENDED");
+
+            AUVAgent agent = GetComponent<AUVAgent>();
+
+            if (agent != null)
+            {
+                agent.AddReward(-100f);
                 agent.EndEpisode();
             }
         }

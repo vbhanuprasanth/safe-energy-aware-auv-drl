@@ -43,7 +43,7 @@ public class AUVAgent : Agent
             energy.ResetEnergy();
         }
 
-        previousDistanceToGoal = Vector3.Distance(transform.position,goal.position);
+        previousDistanceToGoal = Vector3.Distance(transform.position, goal.position);
     }
 
     public override void CollectObservations(VectorSensor sensor)
@@ -85,7 +85,7 @@ public class AUVAgent : Agent
 
         sensor.AddObservation(normalizedEnergy);
 
-        // 5. Five nearest obstacles (5 × 4 = 20)
+        // 5. Five nearest obstacles (5 ï¿½ 4 = 20)
         Transform[] nearestObstacles = new Transform[5];
         float[] nearestDistances = new float[5];
 
@@ -229,6 +229,7 @@ public class AUVAgent : Agent
             EndEpisode();
         }
     }
+
 
     public override void Heuristic(in ActionBuffers actionsOut)
     {

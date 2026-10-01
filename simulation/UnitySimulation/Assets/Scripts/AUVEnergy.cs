@@ -5,7 +5,7 @@ public class AUVEnergy : MonoBehaviour
     [Header("Energy Settings")]
     public float initialEnergy = 100f;
 
-    private float remainingEnergy;
+    [SerializeField] private float remainingEnergy;
 
     public float RemainingEnergy
     {

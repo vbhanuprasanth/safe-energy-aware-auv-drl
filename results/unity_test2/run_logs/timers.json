@@ -1,0 +1,42 @@
+{
+    "name": "root",
+    "metadata": {
+        "timer_format_version": "0.1.0",
+        "start_time_seconds": "1790773248",
+        "python_version": "3.10.12 | packaged by conda-forge | (main, Jun 23 2023, 22:34:57) [MSC v.1936 64 bit (AMD64)]",
+        "command_line_arguments": "C:\\Users\\User\\safe-energy-aware-auv-drl\\.venv\\Scripts\\mlagents-learn .\\configs\\mlagents_test.yaml --run-id=unity_test2",
+        "mlagents_version": "1.1.0",
+        "mlagents_envs_version": "1.1.0",
+        "communication_protocol_version": "1.5.0",
+        "pytorch_version": "2.8.0+cu128",
+        "numpy_version": "1.23.5",
+        "end_time_seconds": "1790773351"
+    },
+    "total": 102.55719560000034,
+    "count": 1,
+    "self": 0.020989900000131456,
+    "children": {
+        "run_training.setup": {
+            "total": 0.2046280000004117,
+            "count": 1,
+            "self": 0.2046280000004117
+        },
+        "TrainerController.start_learning": {
+            "total": 102.3315776999998,
+            "count": 1,
+            "self": 0.00017070000012608944,
+            "children": {
+                "TrainerController._reset_env": {
+                    "total": 102.33137729999999,
+                    "count": 1,
+                    "self": 102.33137729999999
+                },
+                "TrainerController._save_models": {
+                    "total": 2.969999968627235e-05,
+                    "count": 1,
+                    "self": 2.969999968627235e-05
+                }
+            }
+        }
+    }
+}
