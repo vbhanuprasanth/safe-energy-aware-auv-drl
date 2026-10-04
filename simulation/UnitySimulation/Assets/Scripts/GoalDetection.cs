@@ -2,19 +2,26 @@ using UnityEngine;
 
 public class GoalDetection : MonoBehaviour
 {
-    private void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(
+        Collider other
+    )
     {
         if (!other.CompareTag("Player"))
             return;
 
-        AUVAgent agent = other.GetComponent<AUVAgent>();
+        AUVAgent agent =
+            other.GetComponent<AUVAgent>();
 
-        if (agent != null)
-        {
-            Debug.Log("GOAL REACHED!");
+        if (agent == null)
+            return;
 
-            agent.AddReward(250f);
-            agent.EndEpisode();
-        }
+        Debug.Log(
+            "GOAL REACHED!"
+        );
+
+        // Team A goal reward
+        agent.AddReward(250f);
+
+        agent.EndEpisode();
     }
 }

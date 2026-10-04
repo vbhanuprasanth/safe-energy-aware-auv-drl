@@ -5,32 +5,46 @@ public class AUVEnergy : MonoBehaviour
     [Header("Energy Settings")]
     public float initialEnergy = 100f;
 
-    [SerializeField] private float remainingEnergy;
+    [SerializeField]
+    private float remainingEnergy;
 
     public float RemainingEnergy
     {
-        get { return remainingEnergy; }
+        get
+        {
+            return remainingEnergy;
+        }
     }
 
-    void Awake()
+    private void Awake()
     {
         ResetEnergy();
     }
 
     public void ResetEnergy()
     {
-        remainingEnergy = initialEnergy;
+        remainingEnergy =
+            initialEnergy;
     }
 
-    public float ConsumeEnergy(Vector3 action)
+    public float ConsumeEnergy(
+        Vector3 action
+    )
     {
-        float actionMagnitude = action.magnitude;
+        float actionMagnitude =
+            action.magnitude;
 
-        float energyConsumed = 0.5f * actionMagnitude;
+        float energyConsumed =
+            0.5f * actionMagnitude;
 
-        remainingEnergy -= energyConsumed;
+        remainingEnergy -=
+            energyConsumed;
 
-        remainingEnergy = Mathf.Max(0f, remainingEnergy);
+        remainingEnergy =
+            Mathf.Max(
+                0f,
+                remainingEnergy
+            );
 
         return energyConsumed;
     }

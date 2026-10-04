@@ -27,9 +27,29 @@ public class AUVAgent : Agent
     public Transform goal;
     public Transform[] obstacles;
 
+    [Header("Environment Bounds")]
+    [SerializeField]
+    private Vector3 environmentMin =
+        new Vector3(0f, 0f, 0f);
+
+    [SerializeField]
+    private Vector3 environmentMax =
+        new Vector3(20f, 20f, 10f);
+
+    [Header("AUV Settings")]
+    [SerializeField]
+    private float auvRadius = 0.5f;
+
+    [Header("Safety Settings")]
+    [SerializeField]
+    private float safetyDistance = 2.0f;
+
     public override void OnEpisodeBegin()
     {
-        transform.position = startPosition;
+        Vector3 newStartPosition =
+            GenerateRandomStartPosition();
+
+        transform.position = newStartPosition;
         transform.rotation = startRotation;
 
         if (rb != null)
@@ -43,66 +63,203 @@ public class AUVAgent : Agent
             energy.ResetEnergy();
         }
 
-        previousDistanceToGoal = Vector3.Distance(transform.position, goal.position);
+        previousDistanceToGoal =
+            Vector3.Distance(
+                transform.position,
+                goal.position
+            );
     }
 
-    public override void CollectObservations(VectorSensor sensor)
+    private Vector3 GenerateRandomStartPosition()
     {
-        // Environment normalization size
-        Vector3 environmentSize = new Vector3(20f, 20f, 10f);
+        for (int attempt = 0; attempt < 100; attempt++)
+        {
+            Vector3 position = new Vector3(
+                Random.Range(1f, 19f),
+                Random.Range(1f, 19f),
+                Random.Range(1f, 9f)
+            );
+
+            // Keep sufficiently far from goal
+            float distanceToGoal =
+                Vector3.Distance(
+                    position,
+                    goal.position
+                );
+
+            if (distanceToGoal < 5f)
+            {
+                continue;
+            }
+
+            bool validPosition = true;
+
+            foreach (Transform obstacle in obstacles)
+            {
+                if (obstacle == null)
+                {
+                    continue;
+                }
+
+                float obstacleRadius =
+                    GetObstacleRadius(obstacle);
+
+                float distance =
+                    Vector3.Distance(
+                        position,
+                        obstacle.position
+                    );
+
+                float minimumSafeDistance =
+                    auvRadius
+                    + obstacleRadius
+                    + safetyDistance;
+
+                if (distance < minimumSafeDistance)
+                {
+                    validPosition = false;
+                    break;
+                }
+            }
+
+            if (validPosition)
+            {
+                return position;
+            }
+        }
+
+        // Fallback start position
+        return startPosition;
+    }
+
+    private float GetObstacleRadius(
+        Transform obstacle
+    )
+    {
+        SphereCollider sphereCollider =
+            obstacle.GetComponent<SphereCollider>();
+
+        if (sphereCollider != null)
+        {
+            float maximumScale = Mathf.Max(
+                obstacle.lossyScale.x,
+                obstacle.lossyScale.y,
+                obstacle.lossyScale.z
+            );
+
+            return sphereCollider.radius *
+                   maximumScale;
+        }
+
+        return 1.0f;
+    }
+
+    public override void CollectObservations(
+        VectorSensor sensor
+    )
+    {
+        Vector3 environmentSize =
+            new Vector3(20f, 20f, 10f);
+
         float maxDistance = 30f;
 
-        // 1. AUV position (3)
-        Vector3 normalizedPosition = new Vector3(
-            transform.position.x / environmentSize.x,
-            transform.position.y / environmentSize.y,
-            transform.position.z / environmentSize.z
+        // ==========================================
+        // 1. AUV POSITION (3)
+        // ==========================================
+
+        Vector3 normalizedPosition =
+            new Vector3(
+                transform.position.x /
+                    environmentSize.x,
+
+                transform.position.y /
+                    environmentSize.y,
+
+                transform.position.z /
+                    environmentSize.z
+            );
+
+        sensor.AddObservation(
+            normalizedPosition
         );
 
-        sensor.AddObservation(normalizedPosition);
+        // ==========================================
+        // 2. RELATIVE POSITION TO GOAL (3)
+        // ==========================================
 
-        // 2. Relative position to goal (3)
-        Vector3 relativeGoal = goal.position - transform.position;
+        Vector3 relativeGoal =
+            goal.position - transform.position;
 
-        Vector3 normalizedGoal = new Vector3(
-            relativeGoal.x / environmentSize.x,
-            relativeGoal.y / environmentSize.y,
-            relativeGoal.z / environmentSize.z
+        Vector3 normalizedGoal =
+            new Vector3(
+                relativeGoal.x /
+                    environmentSize.x,
+
+                relativeGoal.y /
+                    environmentSize.y,
+
+                relativeGoal.z /
+                    environmentSize.z
+            );
+
+        sensor.AddObservation(
+            normalizedGoal
         );
 
-        sensor.AddObservation(normalizedGoal);
+        // ==========================================
+        // 3. DISTANCE TO GOAL (1)
+        // ==========================================
 
-        // 3. Distance to goal (1)
-        float distanceToGoal = Vector3.Distance(
-            transform.position,
-            goal.position
+        float distanceToGoal =
+            Vector3.Distance(
+                transform.position,
+                goal.position
+            );
+
+        sensor.AddObservation(
+            distanceToGoal / maxDistance
         );
 
-        sensor.AddObservation(distanceToGoal / maxDistance);
+        // ==========================================
+        // 4. REMAINING ENERGY (1)
+        // ==========================================
 
-        // 4. Remaining energy (1)
-        float normalizedEnergy = energy.RemainingEnergy / energy.initialEnergy;
+        float normalizedEnergy =
+            energy.RemainingEnergy /
+            energy.initialEnergy;
 
-        sensor.AddObservation(normalizedEnergy);
+        sensor.AddObservation(
+            normalizedEnergy
+        );
 
-        // 5. Five nearest obstacles (5 � 4 = 20)
-        Transform[] nearestObstacles = new Transform[5];
-        float[] nearestDistances = new float[5];
+        // ==========================================
+        // 5. FIVE NEAREST OBSTACLES (20)
+        // ==========================================
+
+        Transform[] nearestObstacles =
+            new Transform[5];
+
+        float[] nearestDistances =
+            new float[5];
 
         for (int i = 0; i < 5; i++)
         {
-            nearestDistances[i] = float.MaxValue;
+            nearestDistances[i] =
+                float.MaxValue;
         }
 
         foreach (Transform obstacle in obstacles)
         {
             if (obstacle == null)
+            {
                 continue;
+            }
 
-            float distance = Vector3.Distance(
-                transform.position,
-                obstacle.position
-            );
+            float distance =
+                Vector3.Distance(
+                    transform.position,
+                    obstacle.position
+                );
 
             for (int i = 0; i < 5; i++)
             {
@@ -110,131 +267,273 @@ public class AUVAgent : Agent
                 {
                     for (int j = 4; j > i; j--)
                     {
-                        nearestDistances[j] = nearestDistances[j - 1];
-                        nearestObstacles[j] = nearestObstacles[j - 1];
+                        nearestDistances[j] =
+                            nearestDistances[j - 1];
+
+                        nearestObstacles[j] =
+                            nearestObstacles[j - 1];
                     }
 
-                    nearestDistances[i] = distance;
-                    nearestObstacles[i] = obstacle;
+                    nearestDistances[i] =
+                        distance;
+
+                    nearestObstacles[i] =
+                        obstacle;
 
                     break;
                 }
             }
         }
 
-        // Add information for exactly 5 obstacles
+        // Add exactly 20 obstacle observations
         for (int i = 0; i < 5; i++)
         {
             if (nearestObstacles[i] != null)
             {
                 Vector3 relativeObstacle =
-                    nearestObstacles[i].position - transform.position;
+                    nearestObstacles[i].position
+                    - transform.position;
 
-                Vector3 normalizedObstacle = new Vector3(
-                    relativeObstacle.x / environmentSize.x,
-                    relativeObstacle.y / environmentSize.y,
-                    relativeObstacle.z / environmentSize.z
-                );
+                Vector3 normalizedObstacle =
+                    new Vector3(
+                        relativeObstacle.x /
+                            environmentSize.x,
+
+                        relativeObstacle.y /
+                            environmentSize.y,
+
+                        relativeObstacle.z /
+                            environmentSize.z
+                    );
 
                 // Relative X, Y, Z
-                sensor.AddObservation(normalizedObstacle);
+                sensor.AddObservation(
+                    normalizedObstacle
+                );
 
                 // Distance
                 sensor.AddObservation(
-                    nearestDistances[i] / maxDistance
+                    nearestDistances[i] /
+                    maxDistance
                 );
             }
             else
             {
-                // Padding when fewer than 5 obstacles exist
-                sensor.AddObservation(Vector3.zero);
-                sensor.AddObservation(0f);
+                sensor.AddObservation(
+                    Vector3.zero
+                );
+
+                sensor.AddObservation(
+                    0f
+                );
             }
         }
     }
 
-    public override void OnActionReceived(ActionBuffers actions)
+    private bool IsOutsideEnvironment()
     {
-        float actionX = Mathf.Clamp(actions.ContinuousActions[0], -1f, 1f);
-        float actionY = Mathf.Clamp(actions.ContinuousActions[1], -1f, 1f);
-        float actionZ = Mathf.Clamp(actions.ContinuousActions[2], -1f, 1f);
+        Vector3 position =
+            transform.position;
 
-        Vector3 action = new Vector3(actionX, actionY, actionZ);
+        return
+            position.x < environmentMin.x ||
+            position.x > environmentMax.x ||
+            position.y < environmentMin.y ||
+            position.y > environmentMax.y ||
+            position.z < environmentMin.z ||
+            position.z > environmentMax.z;
+    }
 
-        // Energy consumption
-        float energyConsumed = 0.5f * action.magnitude;
+    private bool CheckSafetyViolation()
+    {
+        foreach (Transform obstacle in obstacles)
+        {
+            if (obstacle == null)
+            {
+                continue;
+            }
+
+            float obstacleRadius =
+                GetObstacleRadius(obstacle);
+
+            float distance =
+                Vector3.Distance(
+                    transform.position,
+                    obstacle.position
+                );
+
+            float safeDistance =
+                auvRadius
+                + obstacleRadius
+                + safetyDistance;
+
+            if (distance < safeDistance)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public override void OnActionReceived(
+        ActionBuffers actions
+    )
+    {
+        // ==========================================
+        // ACTIONS
+        // ==========================================
+
+        float actionX = Mathf.Clamp(
+            actions.ContinuousActions[0],
+            -1f,
+            1f
+        );
+
+        float actionY = Mathf.Clamp(
+            actions.ContinuousActions[1],
+            -1f,
+            1f
+        );
+
+        float actionZ = Mathf.Clamp(
+            actions.ContinuousActions[2],
+            -1f,
+            1f
+        );
+
+        Vector3 action =
+            new Vector3(
+                actionX,
+                actionY,
+                actionZ
+            );
+
+        // ==========================================
+        // ENERGY CONSUMPTION
+        // ==========================================
+
+        float energyConsumed =
+            0.5f * action.magnitude;
 
         if (energy != null)
         {
             energy.ConsumeEnergy(action);
         }
 
-        // Move AUV
+        // ==========================================
+        // MOVE AUV
+        // ==========================================
+
         if (rb != null)
         {
             rb.MovePosition(
-                rb.position + action * Time.fixedDeltaTime
+                rb.position + action
             );
         }
 
-        // Calculate new distance to goal
-        float currentDistanceToGoal = Vector3.Distance(
-            transform.position,
-            goal.position
-        );
+        // ==========================================
+        // BOUNDARY CHECK
+        // ==========================================
 
-        // Progress toward goal
+        bool hitBoundary =
+            IsOutsideEnvironment();
+
+        // ==========================================
+        // DISTANCE TO GOAL
+        // ==========================================
+
+        float currentDistanceToGoal =
+            Vector3.Distance(
+                transform.position,
+                goal.position
+            );
+
         float distanceProgress =
-            previousDistanceToGoal - currentDistanceToGoal;
+            previousDistanceToGoal
+            - currentDistanceToGoal;
 
-        // Team A reward components
-        float progressReward = distanceProgress * 20f;
-        float energyPenalty = energyConsumed;
-        float stepPenalty = -0.2f;
+        // ==========================================
+        // REWARD COMPONENTS
+        // ==========================================
 
-        // Safety check
-        float safetyDistance = 2.0f;
+        float progressReward =
+            distanceProgress * 20f;
+
+        float energyPenalty =
+            energyConsumed;
+
+        float stepPenalty =
+            -0.2f;
+
+        // ==========================================
+        // SAFETY CHECK
+        // ==========================================
+
         float safetyPenalty = 0f;
 
-        foreach (Transform obstacle in obstacles)
+        if (CheckSafetyViolation())
         {
-            if (obstacle == null)
-                continue;
-
-            float obstacleDistance =
-                Vector3.Distance(transform.position, obstacle.position);
-
-            if (obstacleDistance < safetyDistance)
-            {
-                safetyPenalty = -25f;
-                break;
-            }
+            safetyPenalty = -25f;
         }
 
-        // Total reward
+        // ==========================================
+        // BOUNDARY PENALTY
+        // ==========================================
+
+        float boundaryPenalty =
+            hitBoundary ? -100f : 0f;
+
+        // ==========================================
+        // TOTAL REWARD
+        // ==========================================
+
         float reward =
             progressReward
             - energyPenalty
             + stepPenalty
-            + safetyPenalty;
+            + safetyPenalty
+            + boundaryPenalty;
 
         AddReward(reward);
 
-        // Update distance for the next action
-        previousDistanceToGoal = currentDistanceToGoal;
+        // ==========================================
+        // UPDATE PREVIOUS DISTANCE
+        // ==========================================
 
-        // Energy depletion termination
-        if (energy != null && energy.RemainingEnergy <= 0f)
+        previousDistanceToGoal =
+            currentDistanceToGoal;
+
+        // ==========================================
+        // END IF BOUNDARY HIT
+        // ==========================================
+
+        if (hitBoundary)
+        {
+            EndEpisode();
+            return;
+        }
+
+        // ==========================================
+        // ENERGY DEPLETION
+        // ==========================================
+
+        if (energy != null &&
+            energy.RemainingEnergy <= 0f)
         {
             EndEpisode();
         }
     }
 
-
-    public override void Heuristic(in ActionBuffers actionsOut)
+    public override void Heuristic(
+        in ActionBuffers actionsOut
+    )
     {
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
+        float horizontal =
+            Input.GetAxis("Horizontal");
+
+        float vertical =
+            Input.GetAxis("Vertical");
 
         float upDown = 0f;
 
@@ -247,10 +546,16 @@ public class AUVAgent : Agent
             upDown = -1f;
         }
 
-        var continuousActions = actionsOut.ContinuousActions;
+        var continuousActions =
+            actionsOut.ContinuousActions;
 
-        continuousActions[0] = horizontal;
-        continuousActions[1] = upDown;
-        continuousActions[2] = vertical;
+        continuousActions[0] =
+            horizontal;
+
+        continuousActions[1] =
+            upDown;
+
+        continuousActions[2] =
+            vertical;
     }
 }

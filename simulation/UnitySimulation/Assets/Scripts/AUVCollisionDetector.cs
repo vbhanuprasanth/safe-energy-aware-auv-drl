@@ -2,36 +2,60 @@ using UnityEngine;
 
 public class AUVCollisionDetector : MonoBehaviour
 {
-    private void OnCollisionEnter(Collision collision)
+    private void OnCollisionEnter(
+        Collision collision
+    )
     {
-        Debug.Log("AUV COLLISION with: " + collision.gameObject.name);
+        Debug.Log(
+            "AUV COLLISION with: " +
+            collision.gameObject.name
+        );
 
-        // Obstacle collision
-        if (collision.gameObject.name == "Obstacle_01" ||
-            collision.gameObject.name == "Obstacle_02" ||
-            collision.gameObject.name == "DynamicObstacle_01")
+        AUVAgent agent =
+            GetComponent<AUVAgent>();
+
+        if (agent == null)
+            return;
+
+        // =====================================================
+        // TEAM A OBSTACLE COLLISION
+        // =====================================================
+
+        if (collision.gameObject.name == "obstacle_01" ||
+            collision.gameObject.name == "obstacle_02" ||
+            collision.gameObject.name == "obstacle_03" ||
+            collision.gameObject.name == "obstacle_04" ||
+            collision.gameObject.name == "obstacle_05")
         {
-            Debug.Log("AUV HIT OBSTACLE - EPISODE ENDED");
+            Debug.Log(
+                "AUV HIT OBSTACLE - EPISODE ENDED"
+            );
 
-            AUVAgent agent = GetComponent<AUVAgent>();
+            // Team A collision penalty
+            agent.AddReward(-250f);
 
-            if (agent != null)
-            {
-                agent.AddReward(-250f);
-                agent.EndEpisode();
-            }
+            agent.EndEpisode();
+
+            return;
         }
-        else if (collision.gameObject.name == "SimulationFloor")
+
+        // =====================================================
+        // ENVIRONMENT BOUNDARY / FLOOR
+        // =====================================================
+
+        if (collision.gameObject.name ==
+            "SimulationFloor")
         {
-            Debug.Log("AUV HIT FLOOR - EPISODE ENDED");
+            Debug.Log(
+                "AUV HIT FLOOR - EPISODE ENDED"
+            );
 
-            AUVAgent agent = GetComponent<AUVAgent>();
+            // Team A boundary penalty
+            agent.AddReward(-100f);
 
-            if (agent != null)
-            {
-                agent.AddReward(-100f);
-                agent.EndEpisode();
-            }
+            agent.EndEpisode();
+
+            return;
         }
     }
 }
