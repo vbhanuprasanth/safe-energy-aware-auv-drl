@@ -68,6 +68,7 @@
     <Compile Include="Assets\Scripts\DynamicObstacle.cs" />
     <Compile Include="Assets\Scripts\AUVController.cs" />
     <Compile Include="Assets\Scripts\GoalDetection.cs" />
+    <Compile Include="Assets\Scripts\PPOUnityBridge.cs" />
     <Compile Include="Assets\Scripts\AUVEnergy.cs" />
     <Compile Include="Assets\TutorialInfo\Scripts\Readme.cs" />
     <Compile Include="Assets\Scripts\AUVCurrent.cs" />

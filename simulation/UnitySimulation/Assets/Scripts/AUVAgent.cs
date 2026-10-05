@@ -558,4 +558,271 @@ public class AUVAgent : Agent
         continuousActions[2] =
             vertical;
     }
+
+    // ==========================================================
+    // PPO BRIDGE: GET CURRENT 28 OBSERVATIONS
+    // ==========================================================
+
+    public float[] GetCurrentObservations()
+    {
+        Vector3 environmentSize =
+            new Vector3(20f, 20f, 10f);
+
+        float maxDistance = 30f;
+
+        float[] observations = new float[28];
+
+        int index = 0;
+
+        // 1. AUV POSITION (3)
+        Vector3 normalizedPosition =
+            new Vector3(
+                transform.position.x / environmentSize.x,
+                transform.position.y / environmentSize.y,
+                transform.position.z / environmentSize.z
+            );
+
+        observations[index++] = normalizedPosition.x;
+        observations[index++] = normalizedPosition.y;
+        observations[index++] = normalizedPosition.z;
+
+        // 2. RELATIVE POSITION TO GOAL (3)
+        Vector3 relativeGoal =
+            goal.position - transform.position;
+
+        Vector3 normalizedGoal =
+            new Vector3(
+                relativeGoal.x / environmentSize.x,
+                relativeGoal.y / environmentSize.y,
+                relativeGoal.z / environmentSize.z
+            );
+
+        observations[index++] = normalizedGoal.x;
+        observations[index++] = normalizedGoal.y;
+        observations[index++] = normalizedGoal.z;
+
+        // 3. DISTANCE TO GOAL (1)
+        float distanceToGoal =
+            Vector3.Distance(
+                transform.position,
+                goal.position
+            );
+
+        observations[index++] =
+            distanceToGoal / maxDistance;
+
+        // 4. REMAINING ENERGY (1)
+        float normalizedEnergy =
+            energy.RemainingEnergy /
+            energy.initialEnergy;
+
+        observations[index++] =
+            normalizedEnergy;
+
+        // 5. FIVE NEAREST OBSTACLES (20)
+        Transform[] nearestObstacles =
+            new Transform[5];
+
+        float[] nearestDistances =
+            new float[5];
+
+        for (int i = 0; i < 5; i++)
+        {
+            nearestDistances[i] =
+                float.MaxValue;
+        }
+
+        foreach (Transform obstacle in obstacles)
+        {
+            if (obstacle == null)
+            {
+                continue;
+            }
+
+            float distance =
+                Vector3.Distance(
+                    transform.position,
+                    obstacle.position
+                );
+
+            for (int i = 0; i < 5; i++)
+            {
+                if (distance < nearestDistances[i])
+                {
+                    for (int j = 4; j > i; j--)
+                    {
+                        nearestDistances[j] =
+                            nearestDistances[j - 1];
+
+                        nearestObstacles[j] =
+                            nearestObstacles[j - 1];
+                    }
+
+                    nearestDistances[i] =
+                        distance;
+
+                    nearestObstacles[i] =
+                        obstacle;
+
+                    break;
+                }
+            }
+        }
+
+        for (int i = 0; i < 5; i++)
+        {
+            if (nearestObstacles[i] != null)
+            {
+                Vector3 relativeObstacle =
+                    nearestObstacles[i].position
+                    - transform.position;
+
+                Vector3 normalizedObstacle =
+                    new Vector3(
+                        relativeObstacle.x /
+                            environmentSize.x,
+
+                        relativeObstacle.y /
+                            environmentSize.y,
+
+                        relativeObstacle.z /
+                            environmentSize.z
+                    );
+
+                observations[index++] =
+                    normalizedObstacle.x;
+
+                observations[index++] =
+                    normalizedObstacle.y;
+
+                observations[index++] =
+                    normalizedObstacle.z;
+
+                observations[index++] =
+                    nearestDistances[i] /
+                    maxDistance;
+            }
+            else
+            {
+                observations[index++] = 0f;
+                observations[index++] = 0f;
+                observations[index++] = 0f;
+                observations[index++] = 0f;
+            }
+        }
+
+        return observations;
+    }
+
+
+    // ==========================================================
+    // PPO BRIDGE: APPLY 3 PPO ACTIONS
+    // ==========================================================
+
+    public void ApplyExternalAction(float[] actions)
+    {
+        if (actions == null || actions.Length != 3)
+        {
+            Debug.LogError(
+                "PPO BRIDGE: Expected exactly 3 actions."
+            );
+
+            return;
+        }
+
+        float actionX =
+            Mathf.Clamp(actions[0], -1f, 1f);
+
+        float actionY =
+            Mathf.Clamp(actions[1], -1f, 1f);
+
+        float actionZ =
+            Mathf.Clamp(actions[2], -1f, 1f);
+
+        Vector3 action =
+            new Vector3(
+                actionX,
+                actionY,
+                actionZ
+            );
+
+        // Energy consumption
+        float energyConsumed =
+            0.5f * action.magnitude;
+
+        if (energy != null)
+        {
+            energy.ConsumeEnergy(action);
+        }
+
+        // Move AUV
+        if (rb != null)
+        {
+            rb.MovePosition(
+                rb.position + action
+            );
+        }
+
+        // Boundary check
+        bool hitBoundary =
+            IsOutsideEnvironment();
+
+        // Distance to goal
+        float currentDistanceToGoal =
+            Vector3.Distance(
+                transform.position,
+                goal.position
+            );
+
+        float distanceProgress =
+            previousDistanceToGoal
+            - currentDistanceToGoal;
+
+        // Reward
+        float progressReward =
+            distanceProgress * 20f;
+
+        float energyPenalty =
+            energyConsumed;
+
+        float stepPenalty =
+            -0.2f;
+
+        float safetyPenalty = 0f;
+
+        if (CheckSafetyViolation())
+        {
+            safetyPenalty = -25f;
+        }
+
+        float boundaryPenalty =
+            hitBoundary ? -100f : 0f;
+
+        float reward =
+            progressReward
+            - energyPenalty
+            + stepPenalty
+            + safetyPenalty
+            + boundaryPenalty;
+
+        AddReward(reward);
+
+        previousDistanceToGoal =
+            currentDistanceToGoal;
+
+        // Boundary termination
+        if (hitBoundary)
+        {
+            EndEpisode();
+            return;
+        }
+
+        // Energy termination
+        if (energy != null &&
+            energy.RemainingEnergy <= 0f)
+        {
+            EndEpisode();
+        }
+    }
+
 }
