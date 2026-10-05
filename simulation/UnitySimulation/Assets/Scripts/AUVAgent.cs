@@ -46,11 +46,19 @@ public class AUVAgent : Agent
 
     public override void OnEpisodeBegin()
     {
+        // =====================================================
+        // RANDOMIZE AUV START POSITION
+        // =====================================================
+
         Vector3 newStartPosition =
             GenerateRandomStartPosition();
 
         transform.position = newStartPosition;
         transform.rotation = startRotation;
+
+        // =====================================================
+        // RESET VELOCITY
+        // =====================================================
 
         if (rb != null)
         {
@@ -58,16 +66,36 @@ public class AUVAgent : Agent
             rb.angularVelocity = Vector3.zero;
         }
 
+        // =====================================================
+        // RESET ENERGY
+        // =====================================================
+
         if (energy != null)
         {
             energy.ResetEnergy();
         }
+
+        // =====================================================
+        // RESET DISTANCE TO GOAL
+        // =====================================================
 
         previousDistanceToGoal =
             Vector3.Distance(
                 transform.position,
                 goal.position
             );
+
+        // =====================================================
+        // START METRICS AFTER AUV RESET
+        // =====================================================
+
+        AUVMetrics metrics =
+            GetComponent<AUVMetrics>();
+
+        if (metrics != null)
+        {
+            metrics.BeginEpisode();
+        }
     }
 
     private Vector3 GenerateRandomStartPosition()
@@ -306,12 +334,10 @@ public class AUVAgent : Agent
                             environmentSize.z
                     );
 
-                // Relative X, Y, Z
                 sensor.AddObservation(
                     normalizedObstacle
                 );
 
-                // Distance
                 sensor.AddObservation(
                     nearestDistances[i] /
                     maxDistance
@@ -510,6 +536,14 @@ public class AUVAgent : Agent
 
         if (hitBoundary)
         {
+            AUVMetrics metrics =
+                GetComponent<AUVMetrics>();
+
+            if (metrics != null)
+            {
+                metrics.RegisterBoundaryFailure();
+            }
+
             EndEpisode();
             return;
         }
@@ -521,6 +555,14 @@ public class AUVAgent : Agent
         if (energy != null &&
             energy.RemainingEnergy <= 0f)
         {
+            AUVMetrics metrics =
+                GetComponent<AUVMetrics>();
+
+            if (metrics != null)
+            {
+                metrics.RegisterEnergyFailure();
+            }
+
             EndEpisode();
         }
     }
@@ -714,7 +756,6 @@ public class AUVAgent : Agent
         return observations;
     }
 
-
     // ==========================================================
     // PPO BRIDGE: APPLY 3 PPO ACTIONS
     // ==========================================================
@@ -813,6 +854,14 @@ public class AUVAgent : Agent
         // Boundary termination
         if (hitBoundary)
         {
+            AUVMetrics metrics =
+                GetComponent<AUVMetrics>();
+
+            if (metrics != null)
+            {
+                metrics.RegisterBoundaryFailure();
+            }
+
             EndEpisode();
             return;
         }
@@ -821,8 +870,15 @@ public class AUVAgent : Agent
         if (energy != null &&
             energy.RemainingEnergy <= 0f)
         {
+            AUVMetrics metrics =
+                GetComponent<AUVMetrics>();
+
+            if (metrics != null)
+            {
+                metrics.RegisterEnergyFailure();
+            }
+
             EndEpisode();
         }
     }
-
 }

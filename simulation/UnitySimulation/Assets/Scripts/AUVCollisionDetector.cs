@@ -25,7 +25,8 @@ public class AUVCollisionDetector : MonoBehaviour
             collision.gameObject.name == "obstacle_02" ||
             collision.gameObject.name == "obstacle_03" ||
             collision.gameObject.name == "obstacle_04" ||
-            collision.gameObject.name == "obstacle_05")
+            collision.gameObject.name == "obstacle_05" ||
+            collision.gameObject.name == "obstacle_06")
         {
             Debug.Log(
                 "AUV HIT OBSTACLE - EPISODE ENDED"
@@ -33,6 +34,16 @@ public class AUVCollisionDetector : MonoBehaviour
 
             // Team A collision penalty
             agent.AddReward(-250f);
+
+            AUVMetrics metrics =
+                agent.GetComponent<AUVMetrics>();
+
+            if (metrics != null)
+            {
+                metrics.RegisterCollision(
+                    collision.gameObject.name
+                );
+            }
 
             agent.EndEpisode();
 
@@ -52,6 +63,16 @@ public class AUVCollisionDetector : MonoBehaviour
 
             // Team A boundary penalty
             agent.AddReward(-100f);
+
+            AUVMetrics metrics =
+                agent.GetComponent<AUVMetrics>();
+
+            if (metrics != null)
+            {
+                metrics.RegisterCollision(
+                    collision.gameObject.name
+                );
+            }
 
             agent.EndEpisode();
 

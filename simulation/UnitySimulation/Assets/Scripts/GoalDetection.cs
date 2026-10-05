@@ -22,6 +22,14 @@ public class GoalDetection : MonoBehaviour
         // Team A goal reward
         agent.AddReward(250f);
 
+        AUVMetrics metrics =
+            agent.GetComponent<AUVMetrics>();
+
+        if (metrics != null)
+        {
+            metrics.RegisterSuccess();
+        }
+
         agent.EndEpisode();
     }
 }
