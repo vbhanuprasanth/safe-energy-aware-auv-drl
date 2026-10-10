@@ -337,17 +337,42 @@ class AUVEnvironment(gym.Env):
     # COLLISION CHECK
     # =====================================================
 
-    def _check_collision(self):
 
-        for obstacle in self.obstacles:
+        # =====================================================
+    # COLLISION CHECK
+    # =====================================================
 
+
+    def _check_collision(self, previous_position=None):
+
+        self.last_collision_obstacle = None
+        self.last_collision_type = None
+
+        for index, obstacle in enumerate(self.obstacles):
+
+            # Check collision at the final position
             if obstacle.check_collision(
                 self.auv_position,
                 self.auv_radius
             ):
+                self.last_collision_obstacle = index + 1
+                self.last_collision_type = "final_position"
                 return True
 
+            # Check whether the movement segment crosses an obstacle
+            if previous_position is not None:
+                if obstacle.check_path_collision(
+                    previous_position,
+                    self.auv_position,
+                    self.auv_radius
+                ):
+                    self.last_collision_obstacle = index + 1
+                    self.last_collision_type = "swept_path"
+                    return True
+
         return False
+
+
 
     # =====================================================
     # GET NEARBY OBSTACLES
@@ -604,7 +629,7 @@ class AUVEnvironment(gym.Env):
 
         # Check collision
         collision = bool(
-            self._check_collision()
+            self._check_collision(previous_position)
         )
 
         # Check safety violation

@@ -101,12 +101,12 @@ def main():
     # RUN MULTIPLE EPISODES
     # =================================================
 
-    for episode in range(
-        1,
-        number_of_episodes + 1
-    ):
 
-        observation, info = env.reset()
+    for episode in range(1, number_of_episodes + 1):
+
+    # Use the same sequence of random starting positions each run.
+        observation, info = env.reset(seed=1000 + episode)
+
 
         start_position = (
             env.auv_position.copy()
@@ -231,6 +231,16 @@ def main():
             f"Collision: "
             f"{collision}"
         )
+        if collision:
+            index = env.last_collision_obstacle
+
+            print("Collision type:", env.last_collision_type)
+            print("Obstacle number:", index)
+
+            if index is not None:
+                obstacle = env.obstacles[index - 1]
+                print("Obstacle position:", obstacle.position)
+                print("Obstacle radius:", obstacle.radius)
 
         print(
             f"Safety violation: "

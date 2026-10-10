@@ -111,7 +111,7 @@ def main():
 
     model_path = os.path.join(
         models_directory,
-        "auv_ppo_improved_safety"
+        "auv_ppo_obstacle_experiment"
     )
 
     model.save(

@@ -40,7 +40,7 @@ class RewardCalculator:
         # BOUNDARY PENALTY
         # ==========================================
 
-        self.boundary_penalty = -100.0
+        self.boundary_penalty = -200.0
 
         # ==========================================
         # PROGRESS REWARD
